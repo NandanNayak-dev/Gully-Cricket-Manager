@@ -80,4 +80,15 @@ router.put('/:id', auth, async (req, res) => {
   }
 });
 
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    const matchId = req.params.id;
+    await MatchHistory.findByIdAndDelete(matchId);
+    await BallByBall.deleteMany({ matchId });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).send('Server error');
+  }
+});
+
 module.exports = router;

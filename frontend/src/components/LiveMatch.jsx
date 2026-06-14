@@ -185,6 +185,31 @@ export default function LiveMatch({
 
   // Inning complete check after each render is handled by parent via store.
   // We surface a banner if end inning button is needed.
+
+  if (match.status === "completed") {
+    return (
+      <div className="flex min-h-[50vh] flex-col items-center justify-center space-y-6 rounded-2xl bg-white p-8 text-center shadow-sm">
+        <div className="rounded-full bg-emerald-100 p-4 text-emerald-600">
+          <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Match Completed!</h2>
+          <p className="mt-2 text-lg font-medium text-slate-700">{match.result}</p>
+        </div>
+        <button
+          onClick={() => {
+            onEndInning(); // this will trigger the archive in App.jsx
+          }}
+          className="btn-press rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-slate-800"
+        >
+          Save Match & View Summary
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 sm:space-y-5">
       {/* Top match strip */}

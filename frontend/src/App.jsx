@@ -41,8 +41,15 @@ export default function App() {
       useStore.getState().setGullyId(authUser.gullyId);
       fetchMatchesApi(authUser.gullyId)
         .then(data => {
-          const mapped = data.filter(d => d.frontendData).map(d => d.frontendData);
-          useStore.getState().setMatches(mapped);
+          const allMapped = data.filter(d => d.frontendData).map(d => d.frontendData);
+          const completedMatches = allMapped.filter(m => m.status === 'completed');
+          const inProgress = allMapped.find(m => m.status === 'in-progress');
+          
+          useStore.getState().setMatches(completedMatches);
+          
+          if (inProgress && !useStore.getState().currentMatch) {
+            useStore.setState({ currentMatch: inProgress });
+          }
         })
         .catch(console.error);
     }
@@ -82,7 +89,8 @@ export default function App() {
       cfg.id = res.matchId;
       startMatch(cfg);
       setView("live");
-      updateMatchApi(authUser.gullyId, res.matchId, { frontendData: useStore.getState().currentMatch }).catch(console.error);
+      const initializedMatch = useStore.getState().currentMatch;
+      updateMatchApi(authUser.gullyId, res.matchId, { frontendData: initializedMatch }).catch(console.error);
     } catch (err) {
       console.error(err);
       alert("Failed to start match");
@@ -90,17 +98,28 @@ export default function App() {
   };
 
   const handleLiveBall = async (ballObj) => {
+    const mBefore = useStore.getState().currentMatch;
+    if (!mBefore) return;
+    const matchId = mBefore.id;
+    
     addBall(ballObj);
-    const m = useStore.getState().currentMatch;
-    if (m) {
-      try {
-        await addBallApi(authUser.gullyId, m.id, {
-          runs: ballObj.runs || Number(ballObj.event) || 0,
-          wicket: ballObj.event === 'W'
-        });
-        await updateMatchApi(authUser.gullyId, m.id, { frontendData: m });
-      } catch (err) { console.error(err); }
-    }
+    const mAfter = useStore.getState().currentMatch;
+
+    try {
+      await addBallApi(authUser.gullyId, matchId, {
+        runs: ballObj.runs || Number(ballObj.event) || 0,
+        wicket: ballObj.event === 'W'
+      });
+      
+      if (mAfter) {
+        await updateMatchApi(authUser.gullyId, matchId, { frontendData: mAfter });
+      } else {
+        const last = useStore.getState().matches.slice(-1)[0];
+        if (last && last.id === matchId) {
+          await updateMatchApi(authUser.gullyId, matchId, { frontendData: last, status: 'completed', result: last.result });
+        }
+      }
+    } catch (err) { console.error(err); }
   };
 
   const handleEndInning = async () => {
@@ -144,17 +163,29 @@ export default function App() {
     setSummaryMatch(null);
   };
 
+  const handleDeleteMatch = (matchId) => {
+    deleteMatch(matchId);
+    import("./api").then(({ deleteMatchApi }) => 
+      deleteMatchApi(authUser.gullyId, matchId).catch(console.error)
+    );
+  };
+
+  const handleClearAllMatches = () => {
+    matches.forEach(m => handleDeleteMatch(m.id));
+    clearAllMatches();
+  };
+
   if (!isAuthenticated) {
     return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
   }
 
   return (
-    <div className="min-h-screen bg-cream">
+    <div className="min-h-screen bg-slate-50 selection:bg-emerald-500 selection:text-white">
       <Header onHome={handleNav} />
       <div className="mx-auto flex w-full max-w-6xl items-center justify-end px-4 pt-3 sm:px-6">
         <button
           onClick={handleSignOut}
-          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+          className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm transition-all hover:bg-slate-100 hover:text-rose-600"
         >
           Sign out ({authUser.name})
         </button>
@@ -193,8 +224,12 @@ export default function App() {
                   "Cancel current match? All ball-by-ball data will be lost.",
                 )
               ) {
+                const matchId = currentMatch.id;
                 cancelMatch();
                 setView("home");
+                import("./api").then(({ deleteMatchApi }) => 
+                  deleteMatchApi(authUser.gullyId, matchId).catch(console.error)
+                );
               }
             }}
           />
@@ -207,8 +242,8 @@ export default function App() {
               setSummaryMatch(m);
               setView("summary");
             }}
-            onDelete={deleteMatch}
-            onClearAll={clearAllMatches}
+            onDelete={handleDeleteMatch}
+            onClearAll={handleClearAllMatches}
           />
         )}
 
@@ -220,7 +255,7 @@ export default function App() {
               setView("history");
             }}
             onDelete={(id) => {
-              deleteMatch(id || summaryMatch.id);
+              handleDeleteMatch(id || summaryMatch.id);
               setSummaryMatch(null);
               setView("history");
             }}

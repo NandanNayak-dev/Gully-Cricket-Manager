@@ -12,7 +12,7 @@ const useStore = create(
     startMatch: (cfg) => {
         const now = Date.now();
         const match = {
-          id: makeId(),
+          id: cfg.id || makeId(),
           createdAt: now,
           finishedAt: null,
           breakUntil: null,
@@ -69,14 +69,6 @@ const useStore = create(
         };
 
         const advanced = advanceIfCompleted(nextMatch);
-        if (advanced.archivedMatch) {
-          set({
-            matches: [...get().matches, advanced.archivedMatch],
-            currentMatch: null,
-          });
-          return;
-        }
-
         set({ currentMatch: advanced.match });
       },
 
@@ -180,14 +172,16 @@ const useStore = create(
       endInning: () => {
         const m = get().currentMatch;
         if (!m) return null;
-        const advanced = forceAdvance(m);
-        if (advanced.archivedMatch) {
+        
+        if (m.status === "completed") {
           set({
-            matches: [...get().matches, advanced.archivedMatch],
+            matches: [...get().matches, m],
             currentMatch: null,
           });
           return { archived: true };
         }
+
+        const advanced = forceAdvance(m);
         set({ currentMatch: advanced.match });
         if (advanced.startedInningsBreak) return { startedInningsBreak: true };
         return { noChange: true };
@@ -274,7 +268,7 @@ function advanceIfCompleted(match) {
     breakUntil: null,
     breakType: null,
   });
-  return { archivedMatch: finished };
+  return { match: finished };
 }
 
 function forceAdvance(match) {
@@ -305,7 +299,7 @@ function forceAdvance(match) {
     breakUntil: null,
     breakType: null,
   });
-  return { archivedMatch: finished };
+  return { match: finished };
 }
 
 function buildFirstInning(teamA, teamB, firstBattingIndex) {

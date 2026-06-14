@@ -50,3 +50,12 @@ export const updateMatchApi = async (gullyId, matchId, updateData) => {
   if (!res.ok) throw new Error("Failed to update match");
   return res.json();
 };
+
+export const deleteMatchApi = async (gullyId, matchId) => {
+  const res = await fetch(`${API_URL}/matches/${matchId}`, {
+    method: "DELETE",
+    headers: getHeaders(gullyId),
+  });
+  if (!res.ok) throw new Error("Failed to delete match");
+  return res.json();
+};
