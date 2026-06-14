@@ -2,12 +2,14 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 const useStore = create(
-  persist(
-    (set, get) => ({
-      currentMatch: null,
-      matches: [],
+  (set, get) => ({
+    gullyId: null,
+    setGullyId: (id) => set({ gullyId: id }),
+    currentMatch: null,
+    matches: [],
+    setMatches: (fetched) => set({ matches: fetched }),
 
-      startMatch: (cfg) => {
+    startMatch: (cfg) => {
         const now = Date.now();
         const match = {
           id: makeId(),
@@ -238,13 +240,7 @@ const useStore = create(
           matches: get().matches.filter((m) => m.id !== matchId),
         }),
 
-      clearAllMatches: () => set({ matches: [] }),
-    }),
-    {
-      name: "gully-cricket",
-      version: 2,
-    },
-  ),
+    })
 );
 
 function advanceIfCompleted(match) {

@@ -1,4 +1,6 @@
 import React, { useMemo, useRef, useState, useEffect } from "react";
+import AuthScreen from "./components/AuthScreen";
+import { fetchMatchesApi, startMatchApi, addBallApi, updateMatchApi } from "./api";
 import useStore from "./store";
 import Header from "./components/Header";
 import Home from "./components/Home";
@@ -7,9 +9,9 @@ import LiveMatch from "./components/LiveMatch";
 import MatchSummary from "./components/MatchSummary";
 import History from "./components/History";
 import Stats from "./components/Stats";
+import Footer from "./components/Footer";
 
 const SESSION_KEY = "gully-auth-session";
-const USERS_KEY = "gully-auth-users";
 
 export default function App() {
   const currentMatch = useStore((s) => s.currentMatch);
@@ -28,11 +30,23 @@ export default function App() {
 
   const [view, setView] = useState("home");
   const [summaryMatch, setSummaryMatch] = useState(null);
-  const prevMatchCountRef = useRef(matches.length);
   const [authUser, setAuthUser] = useState(() => {
     const raw = localStorage.getItem(SESSION_KEY);
     return raw ? JSON.parse(raw) : null;
   });
+  const prevMatchCountRef = useRef(matches.length);
+
+  useEffect(() => {
+    if (authUser?.gullyId) {
+      useStore.getState().setGullyId(authUser.gullyId);
+      fetchMatchesApi(authUser.gullyId)
+        .then(data => {
+          const mapped = data.filter(d => d.frontendData).map(d => d.frontendData);
+          useStore.getState().setMatches(mapped);
+        })
+        .catch(console.error);
+    }
+  }, [authUser]);
 
   // If we have a current match, route into live view.
   useEffect(() => {
@@ -56,24 +70,51 @@ export default function App() {
 
   const isAuthenticated = Boolean(authUser);
 
-  const handleStartMatch = (cfg) => {
-    startMatch(cfg);
-    setView("live");
+  const handleStartMatch = async (cfg) => {
+    try {
+      const res = await startMatchApi(authUser.gullyId, {
+        teamA: cfg.teamA,
+        teamB: cfg.teamB,
+        tossWinnerIndex: cfg.tossWinnerIndex,
+        tossChoice: cfg.tossChoice,
+        matchData: cfg
+      });
+      cfg.id = res.matchId;
+      startMatch(cfg);
+      setView("live");
+      updateMatchApi(authUser.gullyId, res.matchId, { frontendData: useStore.getState().currentMatch }).catch(console.error);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to start match");
+    }
   };
 
-  const handleLiveBall = (ballObj) => {
+  const handleLiveBall = async (ballObj) => {
     addBall(ballObj);
+    const m = useStore.getState().currentMatch;
+    if (m) {
+      try {
+        await addBallApi(authUser.gullyId, m.id, {
+          runs: ballObj.runs || Number(ballObj.event) || 0,
+          wicket: ballObj.event === 'W'
+        });
+        await updateMatchApi(authUser.gullyId, m.id, { frontendData: m });
+      } catch (err) { console.error(err); }
+    }
   };
 
-  const handleEndInning = () => {
+  const handleEndInning = async () => {
     const result = endInning();
-    if (result?.startedInningsBreak) {
+    const m = useStore.getState().currentMatch;
+    
+    if (result?.startedInningsBreak && m) {
+      updateMatchApi(authUser.gullyId, m.id, { frontendData: m }).catch(console.error);
       setView("live");
     } else if (result?.archived) {
-      // Re-open the latest match in summary view
-      setTimeout(() => {
+      setTimeout(async () => {
         const last = useStore.getState().matches.slice(-1)[0];
         if (last) {
+          await updateMatchApi(authUser.gullyId, last.id, { frontendData: last, status: 'completed', result: last.result }).catch(console.error);
           setSummaryMatch(last);
           setView("summary");
         }
@@ -193,170 +234,3 @@ export default function App() {
   );
 }
 
-function AuthScreen({ onAuthSuccess }) {
-  const [mode, setMode] = useState("signin");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-
-  const canSubmit = useMemo(() => {
-    if (!email.trim() || !password.trim()) return false;
-    if (mode === "signup" && !name.trim()) return false;
-    return true;
-  }, [mode, name, email, password]);
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setError("");
-
-    const users = readUsers();
-
-    if (mode === "signup") {
-      const already = users.some(
-        (u) => u.email.toLowerCase() === email.trim().toLowerCase(),
-      );
-      if (already) {
-        setError("This email is already registered. Please sign in.");
-        return;
-      }
-      const nextUser = {
-        id: `${Date.now()}`,
-        name: name.trim(),
-        email: email.trim().toLowerCase(),
-        password,
-      };
-      const nextUsers = [...users, nextUser];
-      localStorage.setItem(USERS_KEY, JSON.stringify(nextUsers));
-      onAuthSuccess({ id: nextUser.id, name: nextUser.name, email: nextUser.email });
-      return;
-    }
-
-    const found = users.find(
-      (u) =>
-        u.email.toLowerCase() === email.trim().toLowerCase() &&
-        u.password === password,
-    );
-
-    if (!found) {
-      setError("Invalid email or password.");
-      return;
-    }
-
-    onAuthSuccess({ id: found.id, name: found.name, email: found.email });
-  };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-pitch-800 via-pitch-700 to-pitch-900 px-4 py-10 text-white sm:px-6">
-      <div className="mx-auto max-w-5xl overflow-hidden rounded-3xl bg-white/10 backdrop-blur-sm">
-        <div className="grid min-h-[640px] md:grid-cols-2">
-          <div className="flex flex-col justify-between p-8 md:p-10">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-pitch-100/80">
-                Gully Cricket
-              </p>
-              <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
-                Match record handling
-              </h1>
-              <p className="mt-3 max-w-md text-sm text-pitch-50/85">
-                Sign in to manage your matches, track ball-by-ball scoring, and keep
-                your gully cricket history in one place.
-              </p>
-            </div>
-            <p className="text-xs text-pitch-100/70">
-              Project workspace label requested: frontend
-            </p>
-          </div>
-
-          <div className="flex items-center bg-white p-6 text-slate-900 sm:p-10">
-            <form onSubmit={handleSubmit} className="w-full space-y-4">
-              <div className="flex rounded-xl bg-slate-100 p-1">
-                <button
-                  type="button"
-                  onClick={() => setMode("signin")}
-                  className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold ${
-                    mode === "signin" ? "bg-white shadow-sm" : "text-slate-500"
-                  }`}
-                >
-                  Sign in
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMode("signup")}
-                  className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold ${
-                    mode === "signup" ? "bg-white shadow-sm" : "text-slate-500"
-                  }`}
-                >
-                  Sign up
-                </button>
-              </div>
-
-              {mode === "signup" && (
-                <Field label="Full name" value={name} onChange={setName} type="text" />
-              )}
-
-              <Field label="Email" value={email} onChange={setEmail} type="email" />
-              <Field
-                label="Password"
-                value={password}
-                onChange={setPassword}
-                type="password"
-              />
-
-              {error && (
-                <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
-                  {error}
-                </p>
-              )}
-
-              <button
-                type="submit"
-                disabled={!canSubmit}
-                className="w-full rounded-xl bg-pitch-700 px-4 py-2.5 text-sm font-semibold text-white enabled:hover:bg-pitch-800 disabled:cursor-not-allowed disabled:bg-slate-300"
-              >
-                {mode === "signin" ? "Sign in" : "Create account"}
-              </button>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Field({ label, value, onChange, type }) {
-  return (
-    <label className="block space-y-1.5">
-      <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-        {label}
-      </span>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-pitch-400 focus:ring-2 focus:ring-pitch-100"
-      />
-    </label>
-  );
-}
-
-function readUsers() {
-  const raw = localStorage.getItem(USERS_KEY);
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function Footer() {
-  return (
-    <footer className="mt-10 border-t border-pitch-100 bg-white/40 py-5 text-center text-xs text-slate-500">
-      <p>
-        Gully Cricket - built for streets, maidans, and terrace tournaments
-      </p>
-    </footer>
-  );
-}
