@@ -8,11 +8,7 @@ export default function Header({ onHome }) {
           onClick={() => onHome("home")}
           className="flex items-center gap-3 text-left focus:outline-none"
         >
-          <div className="flex h-8 w-8 items-center justify-center rounded bg-slate-900">
-            <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-          </div>
+          <img src="/assets/logo.png" alt="Mohalla Logo" className="h-8 w-8 rounded-lg object-cover shadow-sm" />
           <div className="leading-none ml-1">
             <p className="text-xl font-bold tracking-tight text-slate-900">
               Mohalla

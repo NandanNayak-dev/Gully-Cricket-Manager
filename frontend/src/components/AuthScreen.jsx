@@ -50,6 +50,9 @@ export default function AuthScreen({ onAuthSuccess }) {
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/80 to-slate-900/40" />
         
         <div className="relative z-10">
+          <div className="mb-6">
+            <img src="/assets/logo.png" alt="Mohalla Logo" className="h-14 w-14 rounded-2xl object-cover shadow-md" />
+          </div>
           <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/30 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-emerald-400 backdrop-blur-md">
             <span className="h-2 w-2 rounded-full bg-emerald-400"></span>
             Mohalla Cricket
