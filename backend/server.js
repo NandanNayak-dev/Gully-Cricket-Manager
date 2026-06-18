@@ -11,9 +11,19 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/gully-cricket-manager')
-  .then(() => console.log('MongoDB Connected'))
-  .catch(err => console.log(err));
+if (process.env.MONGO_URI) {
+  mongoose.connect(process.env.MONGO_URI)
+    .then(() => console.log('MongoDB Connected'))
+    .catch(err => console.log(err));
+} else {
+  const { MongoMemoryServer } = require('mongodb-memory-server');
+  MongoMemoryServer.create().then((mongoServer) => {
+    const uri = mongoServer.getUri();
+    mongoose.connect(uri)
+      .then(() => console.log('MongoDB Memory Server Connected'))
+      .catch(err => console.log(err));
+  });
+}
 
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/players', require('./routes/playerRoutes'));
