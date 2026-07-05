@@ -257,7 +257,7 @@ export default function LiveMatch({
 
       {/* Scoreboard */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="scoreboard-shadow rounded-2xl bg-gradient-to-br from-pitch-700 to-pitch-900 p-5 text-white">
+        <div className={`scoreboard-shadow rounded-2xl bg-gradient-to-br ${isSecond ? "from-blue-700 to-blue-900" : "from-pitch-700 to-pitch-900"} p-5 text-white`}>
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold uppercase tracking-wider text-pitch-100/90">
               {battingTeam.name}

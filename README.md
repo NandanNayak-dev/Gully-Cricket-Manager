@@ -62,6 +62,3 @@ Gully Cricket Manager is a full-stack web application designed to help you organ
    ```bash
    npm run dev
    ```
-
-## 📄 License
-This project is licensed under the ISC License.
