@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:5000/api";
+const API_URL = import.meta.env.MODE === 'production' ? '/api' : 'http://localhost:5000/api';
 
 const getHeaders = (gullyId) => {
   const session = localStorage.getItem("gully-auth-session");
