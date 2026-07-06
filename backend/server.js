@@ -32,13 +32,10 @@ app.use('/api/players', require('./routes/playerRoutes'));
 app.use('/api/teams', require('./routes/teamRoutes'));
 app.use('/api/matches', require('./routes/matchRoutes'));
 
-// Serve static frontend in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../frontend/dist')));
-  
-  app.get('*', (req, res) => {
-    res.sendFile(path.resolve(__dirname, '../frontend', 'dist', 'index.html'));
-  });
-}
+// Export app for serverless function
+module.exports = app;
 
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// Only listen if running directly (e.g., node server.js)
+if (require.main === module) {
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+}
