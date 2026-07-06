@@ -1,9 +1,14 @@
 const API_URL = "http://localhost:5000/api";
 
-const getHeaders = (gullyId) => ({
-  "Content-Type": "application/json",
-  "x-gully-id": gullyId,
-});
+const getHeaders = (gullyId) => {
+  const session = localStorage.getItem("gully-auth-session");
+  const user = session ? JSON.parse(session) : null;
+  return {
+    "Content-Type": "application/json",
+    "x-gully-id": gullyId,
+    "Authorization": user && user.token ? `Bearer ${user.token}` : "",
+  };
+};
 
 export const fetchMatchesApi = async (gullyId) => {
   const res = await fetch(`${API_URL}/matches`, { headers: getHeaders(gullyId) });
