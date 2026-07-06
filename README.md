@@ -1,6 +1,6 @@
 # Gully Cricket Manager
 
-**Live Demo:** [https://gullycricket-management.netlify.app/](https://gullcricket.netlify.app/)
+**Live Demo:** [https://gullycricket-management.netlify.app/](https://gullycricket-management.netlify.app/)
 
 Gully Cricket Manager is a full-stack web application designed to help you organize, track, and manage your local cricket tournaments. Keep track of players, build teams, schedule matches, and maintain scores easily.
 
