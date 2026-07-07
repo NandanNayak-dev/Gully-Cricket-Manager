@@ -1,6 +1,6 @@
 [build]
-  # Build the React frontend
-  command = "npm run build --prefix frontend"
+  # Install and build the React frontend
+  command = "npm ci --prefix frontend --include=dev && npm run build --prefix frontend"
   # Serve the frontend dist folder
   publish = "frontend/dist"
   # Tell Netlify where our serverless backend functions are located
